@@ -24,6 +24,9 @@ Can co:
 - Python 3.11+
 - Terraform tai `E:\Terraform\terraform.exe`
 
+Sau khi clone source code, mo PowerShell tai thu muc root cua repo, tuc thu muc co chua `w7` va `xbrain-learners`.
+Tat ca lenh `cd .\...` trong runbook nay deu gia dinh ban dang dung o repo root. Neu dang o thu muc khac, hay `cd` vao repo root truoc.
+
 Kiem tra:
 
 ```powershell
@@ -86,13 +89,15 @@ Default output format: json
 Set profile cho PowerShell hien tai:
 
 ```powershell
+$env:AWS_PROFILE="xbrain"
+$env:AWS_REGION="us-west-2"
 aws sts get-caller-identity
 ```
 
 Lay ARN cua principal dang deploy:
 
 ```powershell
-aws sts get-caller-identity
+aws sts get-caller-identity --query Arn --output text
 ```
 
 Neu ARN co dang `arn:aws:sts::...:assumed-role/...`, hay dien IAM Role ARN that vao Terraform:
@@ -104,7 +109,7 @@ arn:aws:iam::<account-id>:role/<role-name>
 ## 5. Tao `terraform.tfvars`
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\terraform
+cd .\w7\terraform
 Copy-Item terraform.tfvars.example terraform.tfvars
 ```
 
@@ -158,7 +163,7 @@ python -m pip install boto3 opensearch-py requests-aws4auth
 ## 7. Terraform init, fmt, validate
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\terraform
+cd .\w7\terraform
 
 E:\Terraform\terraform.exe init
 E:\Terraform\terraform.exe fmt -recursive
@@ -170,7 +175,7 @@ E:\Terraform\terraform.exe validate
 Backend ECS can Docker image truoc khi service chay.
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\terraform
+cd .\w7\terraform
 E:\Terraform\terraform.exe apply -var-file="terraform.tfvars" -target=aws_ecr_repository.ai_backend
 ```
 
@@ -188,7 +193,7 @@ $ECR_REGISTRY
 ```powershell
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-cd E:\Xbrain\xbrain-dangnhatminh\w7\ai-backend
+cd .\w7\ai-backend
 docker build -t g5-dochub-ai-backend:latest .
 docker tag g5-dochub-ai-backend:latest "${ECR}:latest"
 docker push "${ECR}:latest"
@@ -197,7 +202,7 @@ docker push "${ECR}:latest"
 ## 10. Deploy toan bo ha tang
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\terraform
+cd .\w7\terraform
 
 E:\Terraform\terraform.exe plan -var-file="terraform.tfvars"
 E:\Terraform\terraform.exe apply -var-file="terraform.tfvars"
@@ -222,7 +227,7 @@ Terraform se tao:
 ## 11. Lay output sau deploy
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\terraform
+cd .\w7\terraform
 
 $API_URL = E:\Terraform\terraform.exe output -raw api_gateway_url
 $FRONTEND_BUCKET = E:\Terraform\terraform.exe output -raw frontend_bucket_name
@@ -238,7 +243,7 @@ $FRONTEND_URL
 ## 12. Build va upload frontend
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\frontend
+cd .\w7\frontend
 
 "VITE_API_URL=$API_URL" | Set-Content .env -Encoding ASCII
 
@@ -354,7 +359,7 @@ company-a-contracts
 ## 14. Chay local frontend neu can
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\frontend
+cd .\w7\frontend
 "VITE_API_URL=$API_URL" | Set-Content .env -Encoding ASCII
 npm install
 npm run dev
@@ -411,7 +416,7 @@ $DS_ID = aws bedrock-agent list-data-sources `
 Chay:
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\ai-backend
+cd .\w7\ai-backend
 python -m pip install -r requirements.txt
 python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -485,7 +490,7 @@ Khong can tu dien `BEDROCK_KB_ID`, `BEDROCK_DS_ID`, `DYNAMODB_TABLE`, `WORKSPACE
 Xoa ha tang:
 
 ```powershell
-cd E:\Xbrain\xbrain-dangnhatminh\w7\terraform
+cd .\w7\terraform
 E:\Terraform\terraform.exe destroy -var-file="terraform.tfvars"
 ```
 
