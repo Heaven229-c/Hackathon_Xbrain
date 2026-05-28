@@ -1,0 +1,140 @@
+name: Deploy W7 DocHub AI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy.yml"
+      - "w7/**"
+  workflow_dispatch:
+
+concurrency:
+  group: w7-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-west-2
+  TERRAFORM_DIR: w7/terraform
+  FRONTEND_DIR: w7/frontend
+  BACKEND_DIR: w7/ai-backend
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: ${{ env.FRONTEND_DIR }}/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: npm run lint
+
+      - name: Terraform init
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform format check
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform validate
+
+      - name: Install Terraform helper dependencies
+        run: python -m pip install boto3 opensearch-py requests-aws4auth
+
+      - name: Bootstrap ECR repository
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: terraform apply -input=false -auto-approve -target=aws_ecr_repository.ai_backend
+
+      - name: Read ECR repository URL
+        id: ecr
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: echo "repository_url=$(terraform output -raw ai_backend_ecr_repository_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push AI backend image
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: |
+          docker build -t "${{ steps.ecr.outputs.repository_url }}:${IMAGE_TAG}" -t "${{ steps.ecr.outputs.repository_url }}:latest" .
+          docker push "${{ steps.ecr.outputs.repository_url }}:${IMAGE_TAG}"
+          docker push "${{ steps.ecr.outputs.repository_url }}:latest"
+
+      - name: Terraform apply
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: |
+          terraform apply -input=false -auto-approve \
+            -var="ai_backend_image_tag=${IMAGE_TAG}" \
+            -var='opensearch_index_admin_arns=["${{ secrets.AWS_ROLE_TO_ASSUME }}"]'
+
+      - name: Read deployment outputs
+        id: tfout
+        working-directory: ${{ env.TERRAFORM_DIR }}
+        run: |
+          echo "api_gateway_url=$(terraform output -raw api_gateway_url)" >> "$GITHUB_OUTPUT"
+          echo "frontend_bucket=$(terraform output -raw frontend_bucket_name)" >> "$GITHUB_OUTPUT"
+          echo "cloudfront_distribution_id=$(terraform output -raw cloudfront_distribution_id)" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=$(terraform output -raw frontend_url)" >> "$GITHUB_OUTPUT"
+
+      - name: Build frontend
+        working-directory: ${{ env.FRONTEND_DIR }}
+        env:
+          VITE_API_URL: ${{ steps.tfout.outputs.api_gateway_url }}
+        run: npm run build
+
+      - name: Upload frontend assets
+        working-directory: ${{ env.FRONTEND_DIR }}
+        run: |
+          aws s3 sync dist "s3://${{ steps.tfout.outputs.frontend_bucket }}" \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "public,max-age=31536000,immutable"
+
+          aws s3 cp dist/index.html "s3://${{ steps.tfout.outputs.frontend_bucket }}/index.html" \
+            --cache-control "no-cache,no-store,must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "${{ steps.tfout.outputs.cloudfront_distribution_id }}" --paths "/*"
+
+      - name: Deployment summary
+        run: |
+          echo "Frontend URL: ${{ steps.tfout.outputs.frontend_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "API URL: ${{ steps.tfout.outputs.api_gateway_url }}" >> "$GITHUB_STEP_SUMMARY"
