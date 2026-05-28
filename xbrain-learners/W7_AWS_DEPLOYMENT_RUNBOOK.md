@@ -86,15 +86,13 @@ Default output format: json
 Set profile cho PowerShell hien tai:
 
 ```powershell
-$env:AWS_PROFILE="xbrain"
-$env:AWS_REGION="us-west-2"
 aws sts get-caller-identity
 ```
 
 Lay ARN cua principal dang deploy:
 
 ```powershell
-aws sts get-caller-identity --query Arn --output text
+aws sts get-caller-identity
 ```
 
 Neu ARN co dang `arn:aws:sts::...:assumed-role/...`, hay dien IAM Role ARN that vao Terraform:
