@@ -6,14 +6,14 @@
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Group               | GROUP 5 — XBrain                                                                                                                          |
 | Members             | Minh - Quang Vinh - Hoang - Nam - Quyen - Thuy - Son                                                                                      |
-| Repository          | https://github.com/Heaven229-c/Hackathon_Xbrain/blob/main/docs/W7_evidence.md                                                             |
+| Repository          | https://github.com/Heaven229-c/Hackathon_Xbrain/blob/main/w7/docs/W7_evidence.md                                                             |
 | Prior Week Evidence | [W6 Evidence](../w6/docs/W6_evidence.md)                                                                                                  |
 | Date                | 2026-05-28                                                                                                                                |
 | Application         | DocHub AI — Multi-tenant AI Document Hub                                                                                                  |
 | Domain              | Domain C — ProductivityTech                                                                                                               |
 | Stack               | ECS Fargate (FastAPI AI Backend), Lambda (API + Event Handler), DynamoDB, Bedrock KB, OpenSearch Serverless, CloudFront, ALB, API Gateway |
 | IaC                 | Terraform (all resources)                                                                                                                 |
-| Live URL            | https://d3e4rvb2phagia.cloudfront.net                                                                                                     |
+| Live URL            | https://group5.id.vn                                                                                                     |
 
 ### Architecture Diagram
 
@@ -143,9 +143,9 @@ All resources tagged via Terraform `default_tags`:
 
 | Tag Key       | Value                        |
 | ------------- | ---------------------------- |
-| `Project`     | `W7Capstone`                 |
+| `Project`     | `g5-group5-hackathon`                 |
 | `Team`        | `g5`                         |
-| `Owner`       | `ngokhoangnam4268@gmail.com` |
+| `Owner`       | `g5` |
 | `Environment` | `hackathon`                  |
 
 ![Tags applied to resources](screenshots/cost-01-tags-applied.png)
@@ -378,7 +378,7 @@ TRADE-OFF ACCEPTED:
 
 ### Pre-demo Setup
 
-1. Open `https://d3e4rvb2phagia.cloudfront.net` in browser
+1. Open `https://group5.id.vn/` in browser
    ![Public URL Browser Load](screenshots/public_url.png)
 2. Verify frontend loads (CloudFront HTTPS ✅)
 3. Have 2 test PDF files ready: `contract_A.pdf` and `policy_B.pdf`
@@ -430,7 +430,7 @@ TRADE-OFF ACCEPTED:
 
 | #   | Capability          | Evidence                                                         |
 | --- | ------------------- | ---------------------------------------------------------------- |
-| 1   | Public HTTPS URL    | `https://d3e4rvb2phagia.cloudfront.net` loads in browser         |
+| 1   | Public HTTPS URL    | `https://group5.id.vn` loads in browser         |
 | 2   | Application Compute | ECS Fargate `/chat` returns 200 OK in CloudWatch logs            |
 | 3   | AI/ML Feature       | Bedrock KB returns relevant chunks with source citation          |
 | 4   | Data Persistence    | Workspace + document records in DynamoDB survive session refresh |
